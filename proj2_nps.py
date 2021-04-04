@@ -1,6 +1,6 @@
 #################################
-##### Name:
-##### Uniqname:
+##### Name: Mariele Ventrice
+##### Uniqname: marielev
 #################################
 
 from bs4 import BeautifulSoup
@@ -8,6 +8,9 @@ import requests
 import json
 import secrets # file that contains your API key
 
+BASE_URL = "https://www.nps.gov"
+CACHE_DICT = {}
+CACHE_FILENAME = ""
 
 class NationalSite:
     '''a national site
@@ -30,7 +33,15 @@ class NationalSite:
     phone: string
         the phone of a national site (e.g. '(616) 319-7906', '307-344-7381')
     '''
-    pass
+    def __init__(self, category, name, address, zipcode, phone):
+        self.category = category
+        self.name = name
+        self.address = address
+        self.zipcode = zipcode
+        self.phone = phone
+
+    def info(self):
+        return f"{self.name} ({self.category}): {self.address} {self.zipcode}"
 
 
 def build_state_url_dict():
@@ -46,8 +57,16 @@ def build_state_url_dict():
         key is a state name and value is the url
         e.g. {'michigan':'https://www.nps.gov/state/mi/index.htm', ...}
     '''
-    pass
-       
+    base_url = "https://www.nps.gov"
+    response = requests.get("https://www.nps.gov/index.htm")
+    soup = BeautifulSoup(response.text, "html.parser")
+    states_ul = soup.find("ul", class_="dropdown-menu SearchBar-keywordSearch")
+    list_of_states = states_ul.find_all('a')
+    state_dict = {}
+    for state in list_of_states:
+        state_name = state.text.strip().lower()
+        state_dict[state_name] = base_url + state['href']
+    return state_dict
 
 def get_site_instance(site_url):
     '''Make an instances from a national site URL.
@@ -62,7 +81,15 @@ def get_site_instance(site_url):
     instance
         a national site instance
     '''
-    pass
+    response = requests.get(site_url)
+    soup = BeautifulSoup(response.text, "html.parser")
+    name = soup.find('a', class_="Hero-title").text.strip()
+    category = soup.find('span', class_="Hero-designation").text.strip()
+    address = soup.find('span', itemprop="addressLocality").text.strip() + ", " + soup.find('span', itemprop="addressRegion").text.strip()
+    zipcode = soup.find('span', itemprop="postalCode").text.strip()
+    phone = soup.find('span', itemprop="telephone").text.strip()
+    park_instance = NationalSite(name=name, category=category, address=address, zipcode=zipcode, phone=phone)
+    return park_instance
 
 
 def get_sites_for_state(state_url):
@@ -78,7 +105,8 @@ def get_sites_for_state(state_url):
     list
         a list of national site instances
     '''
-    pass
+
+
 
 
 def get_nearby_places(site_object):
