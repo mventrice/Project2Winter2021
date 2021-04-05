@@ -10,7 +10,7 @@ import secrets # file that contains your API key
 
 BASE_URL = "https://www.nps.gov"
 CACHE_DICT = {}
-CACHE_FILENAME = ""
+CACHE_FILENAME = "nps_scrape.json"
 
 class NationalSite:
     '''a national site
@@ -42,6 +42,35 @@ class NationalSite:
 
     def info(self):
         return f"{self.name} ({self.category}): {self.address} {self.zipcode}"
+
+
+def load_cache():
+    try:
+        cache_file = open(CACHE_FILE_NAME, 'r')
+        cache_file_contents = cache_file.read()
+        cache = json.loads(cache_file_contents)
+        cache_file.close()
+    except:
+        cache = {}
+    return cache
+
+
+def save_cache(cache):
+    cache_file = open(CACHE_FILE_NAME, 'w')
+    contents_to_write = json.dumps(cache)
+    cache_file.write(contents_to_write)
+    cache_file.close()
+
+def make_url_request_using_cache(url, cache):
+    if (url in cache.keys()): # the url is unique key
+        print("Using cache")
+        return cache[url]
+    else:
+        print("Fetching")
+        response = requests.get(url)
+        cache[url] = response.text
+        save_cache(cache)
+        return cache[url]
 
 
 def build_state_url_dict():
@@ -92,6 +121,7 @@ def get_site_instance(site_url):
     return park_instance
 
 
+#Going to pass get_site_instance() into here.#
 def get_sites_for_state(state_url):
     '''Make a list of national site instances from a state URL.
     
@@ -105,8 +135,22 @@ def get_sites_for_state(state_url):
     list
         a list of national site instances
     '''
-
-
+    base_url = "https://www.nps.gov"
+    response = requests.get(state_url)
+    soup = BeautifulSoup(response.text, "html.parser")
+    parks_parent = soup.find('ul', id="list_parks")
+    parks_list = parks_parent.find_all('li', recursive=False)
+    counter = 0
+    list_national_park_instances = []
+    for park in parks_list:
+        park_name = park.find('h3')
+        park_url = base_url + park_name.find('a')['href']
+        park_instance = get_site_instance(park_url)
+        list_national_park_instances.append(park_instance)
+        counter += 1
+        print(f"[{counter}] {park_instance.info()}")
+    return list_national_park_instances
+get_sites_for_state("https://www.nps.gov/state/mi/index.htm")
 
 
 def get_nearby_places(site_object):
@@ -125,5 +169,5 @@ def get_nearby_places(site_object):
     pass
     
 
-if __name__ == "__main__":
-    pass
+# if __name__ == "__main__":
+# input('Enter a state name (e.g. "Massachusetts") or type "exit" to close program.
